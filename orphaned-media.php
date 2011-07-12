@@ -10,6 +10,26 @@ Author URI: http://shamess.info
 License: GPL2
 */
 
+class OrphanedMedia {
+	function __construct () {
+		add_action ( 'admin_menu', array ( &$this, 'add_menu' ) );
+	}
+	
+	public function add_menu () {
+		add_submenu_page ( 'upload.php', 'Orphaned Media', 'Orphaned Media', 'upload_files', 'orphaned', array ( &$this, 'draw_admin_page' ) );
+	}
+	
+	public function draw_admin_page () {
+		?>
+		<div class="wrap">
+			<div class="icon32" id="icon-upload"><br></div>
+			<h2>Orphaned Media</h2>
+			<p>For whatever reason, some times you end up with media in your uploaded content that isn't in the Media Library. This page will show you a list of files which are in your uploads folder, but not in your Media Library.</p>
+		</div>
+		<?php
+	}
+}
 
+$OrphanedMedia = new OrphanedMedia ();
 
 ?>
