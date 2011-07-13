@@ -10,6 +10,8 @@ Author URI: http://shamess.info
 License: GPL2
 */
 
+require_once ( 'class-orphaned-list-table.php' );
+
 class OrphanedMedia {
 	function __construct () {
 		add_action ( 'admin_menu', array ( &$this, 'add_menu' ) );
@@ -27,6 +29,7 @@ class OrphanedMedia {
 			<p>For whatever reason, some times you end up with media in your uploaded content that isn't in the Media Library. This page will show you a list of files which are in your uploads folder, but not in your Media Library.</p>
 		</div>
 		<?php
+		OrphanedListTable::getData ();
 	}
 }
 

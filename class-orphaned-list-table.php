@@ -1,6 +1,8 @@
 <?php
 
-class OrphanedListTable extends WP_List_Table () {
+require_once ( 'includes/class-wp-list-table.php' );
+
+class OrphanedListTable extends WP_List_Table {
 	function __construct ( $args = array() ) {
 		parent::__construct( array(
 			'singular' => 'file',
@@ -33,7 +35,7 @@ class OrphanedListTable extends WP_List_Table () {
 		
 		$columns = $this->get_columns ();
 		$hidden = array();
-		$sortable = array ();
+		$sortable = array();
 		
 		$this->_column_headers = array($columns, $hidden, $sortable);
 		
@@ -46,8 +48,43 @@ class OrphanedListTable extends WP_List_Table () {
 	*
 	* @return array
 	*/
-	private function getData () {
+	function getData () {
+		global $wpdb;
+	
+		$orphaned_files = array();
+	
+		// where's the upload folder?
+		$wp_upload_dir = wp_upload_dir ();
+		$upload_folder = $wp_upload_dir['basedir'];
 		
+		// we'll start checking from the upload folder.
+		// this variable will contain an array of the folders we need to look into.
+		$to_check = array(NULL);
+		
+		// Whilst there's an element in $to_check, we'll keep checking it.
+		while ( count ( $to_check ) ) {
+			$to_check[0] .= "/";
+			$full_path = $upload_folder.$to_check[0];
+			
+			$scanned_dir = scandir ( $full_path );
+			
+			foreach ( $scanned_dir as $path ) {
+				if ( $path == '.' || $path == '..' ) continue;
+				
+				if ( is_dir ( $full_path.$path ) ) {
+					// since it's a directory, we need to look through that too.
+					$to_check[] = $to_check[0].$path;
+				} else {
+					$post_id = $wpdb->get_var ( 'SELECT post_id FROM '.$wpdb->postmeta.' WHERE meta_key = "_wp_attached_file" AND meta_value = "'.trim ($to_check[0].$path, '/').'"' );
+					if ( ! (bool) $post_id ) {
+						$orphaned_files[] = trim ($to_check[0].$path, '/');
+					}
+				}
+			}
+			
+			// remove [0]...
+			array_shift ( $to_check );
+		}
 	}
 }
 
