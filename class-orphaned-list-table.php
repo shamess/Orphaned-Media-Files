@@ -121,8 +121,8 @@ class OrphanedListTable extends WP_List_Table {
 			
 			add_to_media( $file_array );
 		} elseif( $_GET['action'] == "mass-add") {
-			if (count ($_POST['add_to_media'])) {
-				foreach ($_POST['add_to_media'] as $file) {
+			if (count ($_GET['add_to_media'])) {
+				foreach ($_GET['add_to_media'] as $file) {
 					$path_parts = pathinfo( $file );
 					
 					$wp_upload_dir = wp_upload_dir ();
