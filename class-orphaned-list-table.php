@@ -63,48 +63,48 @@ class OrphanedListTable extends WP_List_Table {
 	* Watches for requests to do something with the files, and then does it.
 	*/
 	function handle_actions () {
+		// There's no "add this file to library" function that doesn't also try to upload it, so we'll have to take
+		// parts of the code out ourselves to use here.
+		// This is a bastardised version of media_handle_sideload(), from wp-admin/includes/media.php
+		function add_to_media($file) {
+			$url = $file['url'];
+			$type = $file['type'];
+			$file = $file['file'];
+			$title = preg_replace( '/\.[^.]+$/', '', basename( $file ) );
+			$content = '';
+
+			// use image exif/iptc data for title and caption defaults if possible
+			if ( $image_meta = @wp_read_image_metadata($file) ) {
+				if ( trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) )
+					$title = $image_meta['title'];
+				if ( trim( $image_meta['caption'] ) )
+					$content = $image_meta['caption'];
+			}
+
+			// Construct the attachment array
+			$wp_filetype = wp_check_filetype( basename( $file ), null );
+			$attachment = array(
+				'post_mime_type' => $wp_filetype['type'],
+				'guid' => $url,
+				'post_parent' => 0,
+				'post_title' => $title,
+				'post_content' => $content,
+				'post_status' => 'inherit'
+			);
+			
+			// Save the attachment metadata
+			$id = wp_insert_attachment( $attachment, $file );
+			if ( !is_wp_error($id) )
+				wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file ) );
+
+			return $id;
+		}
+	
 		if ($_GET['add'] == true && isset( $_GET['file'] )) {
 			$path_parts = pathinfo( $_GET['file'] );
 			
 			$wp_upload_dir = wp_upload_dir ();
 			$upload_folder = $wp_upload_dir['basedir'];
-		
-			// There's no "add this file to library" function that doesn't also try to upload it, so we'll have to take
-			// parts of the code out ourselves to use here.
-			// This is a bastardised version of media_handle_sideload(), from wp-admin/includes/media.php
-			function add_to_media($file) {
-				$url = $file['url'];
-				$type = $file['type'];
-				$file = $file['file'];
-				$title = preg_replace( '/\.[^.]+$/', '', basename( $file ) );
-				$content = '';
-
-				// use image exif/iptc data for title and caption defaults if possible
-				if ( $image_meta = @wp_read_image_metadata($file) ) {
-					if ( trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) )
-						$title = $image_meta['title'];
-					if ( trim( $image_meta['caption'] ) )
-						$content = $image_meta['caption'];
-				}
-
-				// Construct the attachment array
-				$wp_filetype = wp_check_filetype( basename( $file ), null );
-				$attachment = array(
-					'post_mime_type' => $wp_filetype['type'],
-					'guid' => $url,
-					'post_parent' => 0,
-					'post_title' => $title,
-					'post_content' => $content,
-					'post_status' => 'inherit'
-				);
-				
-				// Save the attachment metadata
-				$id = wp_insert_attachment( $attachment, $file );
-				if ( !is_wp_error($id) )
-					wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file ) );
-
-				return $id;
-			}
 			
 			$file_array = array (
 				'file' => $upload_folder.$_GET['file'],

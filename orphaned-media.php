@@ -37,7 +37,12 @@ class OrphanedMedia {
 		<?php
 		$Data = new OrphanedListTable ();
 		$Data->prepare_items ();
+		?><form id="movies-filter" method="get"><?php
 		$Data->display ();
+		?>
+		<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+		</form>
+		<?php
 	}
 }
 
