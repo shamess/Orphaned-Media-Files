@@ -23,13 +23,21 @@ class OrphanedMedia {
 	
 	public function draw_admin_page () {
 		?>
+		<style type="text/css">
+			#preview {
+				width: 90px;
+			}
+		</style>
+		
 		<div class="wrap">
 			<div class="icon32" id="icon-upload"><br></div>
 			<h2>Orphaned Media</h2>
 			<p>For whatever reason, some times you end up with media in your uploaded content that isn't in the Media Library. This page will show you a list of files which are in your uploads folder, but not in your Media Library.</p>
 		</div>
 		<?php
-		OrphanedListTable::getData ();
+		$Data = new OrphanedListTable ();
+		$Data->prepare_items ();
+		$Data->display ();
 	}
 }
 
