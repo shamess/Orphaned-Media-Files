@@ -59,6 +59,13 @@ class OrphanedListTable extends WP_List_Table {
 		return $columns;
 	}
 	
+	function get_bulk_actions() {
+		$actions = array(
+			'mass-add'    => 'Add to library'
+		);
+		return $actions;
+	}
+	
 	/**
 	* Watches for requests to do something with the files, and then does it.
 	*/
@@ -113,6 +120,23 @@ class OrphanedListTable extends WP_List_Table {
 			);
 			
 			add_to_media( $file_array );
+		} elseif( $_GET['action'] == "mass-add") {
+			if (count ($_POST['add_to_media'])) {
+				foreach ($_POST['add_to_media'] as $file) {
+					$path_parts = pathinfo( $file );
+					
+					$wp_upload_dir = wp_upload_dir ();
+					$upload_folder = $wp_upload_dir['basedir'];
+					
+					$file_array = array (
+						'file' => $upload_folder.$file,
+						'url' => $wp_upload_dir['url']."/".$file,
+						'type' => ''
+					);
+					
+					add_to_media( $file_array );
+				}
+			}
 		}
 	}
 	
@@ -157,6 +181,29 @@ class OrphanedListTable extends WP_List_Table {
 		$wp_upload_dir = wp_upload_dir ();
 		$upload_folder = $wp_upload_dir['basedir'];
 		
+		// in a bit, we'll be checking to see if the file we're looking at is in the wp_postmeta table as '_wp_attached_file',
+		// however that will only tell us about original images. resized images are stored in wp_postmeta as '_wp_attachment_backup_sizes',
+		// and '_wp_attachment_metadata'. The issue there is that they're inside serialised arrays! We should unserialise all those
+		// values and keep an array of every mentioned file.
+		$arr_metadata = $wpdb->get_results( 'SELECT * FROM '.$wpdb->postmeta.' WHERE meta_key = "_wp_attachment_metadata"', ARRAY_A );
+		foreach( (array)$arr_metadata as $metadata ) {
+			$clean_meta = unserialize( $metadata['meta_value'] );
+			
+			$filename = pathinfo ($clean_meta['file']);
+			$ignore_file[] = $filename['basename'];
+			foreach ( (array)$clean_meta['sizes'] as $size ) {
+				if ( !empty( $size['file'] ) ) $ignore_file[] = $size['file'];
+			}
+		}
+		$arr_metadata = $wpdb->get_results( 'SELECT * FROM '.$wpdb->postmeta.' WHERE meta_key = "_wp_attachment_backup_sizes"', ARRAY_A );
+		foreach( (array)$arr_metadata as $metadata ) {
+			$clean_meta = unserialize( $metadata['meta_value'] );
+			
+			foreach ( (array)$clean_meta as $size ) {
+				if ( !empty( $size['file'] ) ) $ignore_file[] = $size['file'];
+			}
+		}
+		
 		// we'll start checking from the upload folder.
 		// this variable will contain an array of the folders we need to look into.
 		$to_check = array(NULL);
@@ -177,7 +224,11 @@ class OrphanedListTable extends WP_List_Table {
 				} else {
 					$post_id = $wpdb->get_var ( 'SELECT post_id FROM '.$wpdb->postmeta.' WHERE meta_key = "_wp_attached_file" AND meta_value = "'.trim ($to_check[0].$path, '/').'"' );
 					if ( ! (bool) $post_id ) {
-						$orphaned_files[] = $to_check[0].$path;
+						// make sure this filename isn't in the one's we're ignoring
+						$filename = pathinfo ($path);
+						$filename = $filename['basename'];
+						if ( !in_array( $filename, (array)$ignore_file ))
+							$orphaned_files[] = $to_check[0].$path;
 					}
 				}
 			}
